@@ -1,0 +1,54 @@
+    r.readAsArrayBuffer(file); };
+
+  /* ---------- firm people: imported, not hardcoded ----------
+     Accepts JSON { partners: [...], staff: [...] } or a CSV with a header row
+     naming the columns in any order: group, title, name, initials. Group is
+     "partner" or "director" for the partner list, anything else for staff.
+     Missing initials are derived from the name. The list persists. */
+  const [peopleReady, setPeopleReady] = useState(false);
+  useEffect(() => { (async () => {
+    try {
+      const r = await window.storage.get("loe:people");
+      if (r && r.value) { const v = JSON.parse(r.value);
+        if (Array.isArray(v.partners) && v.partners.length) setPartners(v.partners);
+        if (Array.isArray(v.staff) && v.staff.length) setStaff(v.staff); }
+    } catch (e) { /* nothing stored yet */ }
+    setPeopleReady(true);
+  })(); }, []);
+  useEffect(() => { if (!peopleReady) return;
+    try { window.storage.set("loe:people", JSON.stringify({ partners, staff })); } catch (e) {}
+  }, [partners, staff, peopleReady]);
+
+  /* An imported list can drop whoever is currently selected on the Letter tab. */
+  useEffect(() => {
+    if (partners.length && !partners.some((x) => x.name === f.partnerName)) set("partnerName", partners[0].name);
+    if (partners.length > 1 && !partners.some((x) => x.name === f.escalationName && x.name !== f.partnerName))
+      set("escalationName", (partners.find((x) => x.name !== f.partnerName) || partners[0]).name);
+    if (staff.length && !staff.some((x) => x.name === f.generatedBy)) set("generatedBy", staff[0].name);
+  }, [partners, staff]);
+
+  const parsePeople = (text, name) => {
+    if (/\.json$/i.test(name)) { const v = JSON.parse(text);
+      return { partners: v.partners || [], staff: v.staff || [] }; }
+    const rows = text.trim().split(/\r?\n/).map((l) => l.split(",").map((c) => c.trim().replace(/^"|"$/g, "")));
+    const head = (rows.shift() || []).map((h) => h.toLowerCase());
+    const at = (r, k) => { const i = head.indexOf(k); return i < 0 ? "" : (r[i] || ""); };
+    const out = { partners: [], staff: [] };
+    rows.filter((r) => r.join("").length).forEach((r) => {
+      const q = { title: at(r, "title"), name: at(r, "name"), initials: at(r, "initials").toUpperCase() };
+      if (!q.name) return;
+      if (!q.initials) q.initials = q.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase();
+      (/^part|^dir/i.test(at(r, "group")) ? out.partners : out.staff).push(q);
+    });
+    return out;
+  };
+  const loadPeople = (file) => { const r = new FileReader();
+    r.onload = () => { try {
+      const got = parsePeople(String(r.result), file.name);
+      if (!got.partners.length && !got.staff.length) throw new Error("no usable rows found");
+      if (got.partners.length) setPartners(got.partners);
+      if (got.staff.length) setStaff(got.staff);
+    } catch (err) { alert("Could not read that people list: " + err.message); } };
+    r.readAsText(file); };
+  const exportPeople = () => dl(new Blob([JSON.stringify({ partners, staff }, null, 2)],
+    { type: "application/json" }), "loe-people.json");

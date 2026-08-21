@@ -720,19 +720,8 @@ function mergeIntoTemplate(entries, bodyXml, numAdditions) {
 }
 
 /* ================================================================== */
-/* PracticeOS design tokens. The seven names above the divider are the ones the
-   upstream render already uses; only their values change. The names below are
-   added by this layer. */
-const C = {
-  ink: "#0C1A2E", shell: "#EEF3FB", accent: "#1550AA", soft: "#DDE8FF",
-  muted: "#7A96B8", rule: "#DDE8F5", ochre: "#DC2626",
-  /* ------------------------------------------------------------------ */
-  accH: "#0E3D88", accS: "#EEF3FF", surf: "#FFFFFF", surf2: "#F5F8FD",
-  surf3: "#EAF0FA", rule2: "#C6D8EE", tx2: "#3A5378", txd: "#B4C8DE",
-  ok: "#059669", okBg: "#D1FAE5", wa: "#D97706", waBg: "#FEF3C7",
-  er: "#DC2626", erBg: "#FEE2E2",
-};
-const UI = "system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+const C = { ink: "#14201F", shell: "#E7EBE9", accent: "#174E45", soft: "#DCE8E3", muted: "#5E6A67", rule: "#CFD6D3", ochre: "#9A5B18" };
+const UI = "'Archivo','Helvetica Neue',Arial,sans-serif";
 const MONO = "ui-monospace,SFMono-Regular,monospace";
 
 
@@ -852,10 +841,10 @@ function DateField({ value, onChange, style, mono, align }) {
 }
 
 
-const INP = { fontFamily: UI, fontSize: 12.5, lineHeight: 1.4, color: C.ink, background: C.surf, border: `1px solid ${C.rule}`, borderRadius: 8, padding: "6px 9px", minHeight: 32, width: "100%", minWidth: 0, boxSizing: "border-box" };
-const Lab = ({ children }) => <span style={{ display: "block", fontFamily: UI, fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", color: C.muted, fontWeight: 700, marginBottom: 4 }}>{children}</span>;
-const H = ({ children }) => <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted, borderBottom: `1px solid ${C.rule}`, paddingBottom: 7, margin: "18px 0 10px" }}>{children}</div>;
-const R = ({ c, children }) => <div style={{ display: "grid", gridTemplateColumns: c, gap: 10, marginBottom: 11 }}>{children}</div>;
+const INP = { fontFamily: UI, fontSize: 12, color: C.ink, background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 3, padding: "4px 6px", width: "100%", minWidth: 0, boxSizing: "border-box" };
+const Lab = ({ children }) => <span style={{ display: "block", fontFamily: UI, fontSize: 9, textTransform: "uppercase", letterSpacing: ".05em", color: C.muted, fontWeight: 600, marginBottom: 2 }}>{children}</span>;
+const H = ({ children }) => <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, borderBottom: `1px solid ${C.rule}`, paddingBottom: 3, margin: "13px 0 7px" }}>{children}</div>;
+const R = ({ c, children }) => <div style={{ display: "grid", gridTemplateColumns: c, gap: 6, marginBottom: 6 }}>{children}</div>;
 const T = ({ k, f, set }) => <input value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={INP} />;
 const S = ({ k, f, set, opts }) => <select value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={INP}>{opts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select>;
 const TA = ({ k, f, set, rows }) => <textarea rows={rows || 3} value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={{ ...INP, resize: "vertical" }} />;
@@ -948,7 +937,7 @@ export default function LetterOfEngagement() {
     } catch (err) { alert("Could not build the Word file: " + err.message); }
   };
 
-  const ASIDE = { background: C.surf, border: `1px solid ${C.rule}`, borderRadius: 12 };
+  const ASIDE = { background: "#fff", borderRight: `1px solid ${C.rule}` };
   const loadTpl = (file) => { const r = new FileReader();
     r.onload = async () => {
       setTpl({ name: file.name, buf: r.result });
@@ -963,59 +952,6 @@ export default function LetterOfEngagement() {
       } catch (e) { /* too large to keep, it still works for this session */ }
     };
     r.readAsArrayBuffer(file); };
-
-  /* ---------- firm people: imported, not hardcoded ----------
-     Accepts JSON { partners: [...], staff: [...] } or a CSV with a header row
-     naming the columns in any order: group, title, name, initials. Group is
-     "partner" or "director" for the partner list, anything else for staff.
-     Missing initials are derived from the name. The list persists. */
-  const [peopleReady, setPeopleReady] = useState(false);
-  useEffect(() => { (async () => {
-    try {
-      const r = await window.storage.get("loe:people");
-      if (r && r.value) { const v = JSON.parse(r.value);
-        if (Array.isArray(v.partners) && v.partners.length) setPartners(v.partners);
-        if (Array.isArray(v.staff) && v.staff.length) setStaff(v.staff); }
-    } catch (e) { /* nothing stored yet */ }
-    setPeopleReady(true);
-  })(); }, []);
-  useEffect(() => { if (!peopleReady) return;
-    try { window.storage.set("loe:people", JSON.stringify({ partners, staff })); } catch (e) {}
-  }, [partners, staff, peopleReady]);
-
-  /* An imported list can drop whoever is currently selected on the Letter tab. */
-  useEffect(() => {
-    if (partners.length && !partners.some((x) => x.name === f.partnerName)) set("partnerName", partners[0].name);
-    if (partners.length > 1 && !partners.some((x) => x.name === f.escalationName && x.name !== f.partnerName))
-      set("escalationName", (partners.find((x) => x.name !== f.partnerName) || partners[0]).name);
-    if (staff.length && !staff.some((x) => x.name === f.generatedBy)) set("generatedBy", staff[0].name);
-  }, [partners, staff]);
-
-  const parsePeople = (text, name) => {
-    if (/\.json$/i.test(name)) { const v = JSON.parse(text);
-      return { partners: v.partners || [], staff: v.staff || [] }; }
-    const rows = text.trim().split(/\r?\n/).map((l) => l.split(",").map((c) => c.trim().replace(/^"|"$/g, "")));
-    const head = (rows.shift() || []).map((h) => h.toLowerCase());
-    const at = (r, k) => { const i = head.indexOf(k); return i < 0 ? "" : (r[i] || ""); };
-    const out = { partners: [], staff: [] };
-    rows.filter((r) => r.join("").length).forEach((r) => {
-      const q = { title: at(r, "title"), name: at(r, "name"), initials: at(r, "initials").toUpperCase() };
-      if (!q.name) return;
-      if (!q.initials) q.initials = q.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase();
-      (/^part|^dir/i.test(at(r, "group")) ? out.partners : out.staff).push(q);
-    });
-    return out;
-  };
-  const loadPeople = (file) => { const r = new FileReader();
-    r.onload = () => { try {
-      const got = parsePeople(String(r.result), file.name);
-      if (!got.partners.length && !got.staff.length) throw new Error("no usable rows found");
-      if (got.partners.length) setPartners(got.partners);
-      if (got.staff.length) setStaff(got.staff);
-    } catch (err) { alert("Could not read that people list: " + err.message); } };
-    r.readAsText(file); };
-  const exportPeople = () => dl(new Blob([JSON.stringify({ partners, staff }, null, 2)],
-    { type: "application/json" }), "loe-people.json");
 
   const inp = INP; const _unused = { fontFamily: UI, fontSize: 12, color: C.ink, background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 3, padding: "4px 6px", width: "100%", minWidth: 0, boxSizing: "border-box" };
 
@@ -1054,96 +990,59 @@ export default function LetterOfEngagement() {
 
   return (
     <div style={{ background: C.shell, minHeight: "100vh" }}>
-      <style>{`
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap');
         input:focus,select:focus,textarea:focus{border-color:${C.accent}!important;outline:none}
-        button{cursor:pointer}
-        .pOsTab{height:100%;padding:0 14px;font-weight:600;color:${C.muted};
-          border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
-        .pOsTab:hover{color:${C.tx2}}
-        .pOsTab[data-on="1"]{color:${C.accent};font-weight:700;border-bottom-color:${C.accent}}
-        .pOsBtn{height:32px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:600;
-          display:inline-flex;align-items:center;gap:6px;border:1px solid ${C.rule};
-          background:${C.surf};color:${C.ink}}
-        .pOsBtn:hover{background:${C.surf2}}
-        .pOsBtn.pri{background:${C.accent};border-color:${C.accent};color:#fff;font-weight:700}
-        .pOsBtn.pri:hover{background:${C.accH}}
-        .pOsBtn:disabled{opacity:.55;cursor:default}
-        /* H sets its margin inline, so this needs the override */
-        aside.pane > div:first-child{margin-top:4px!important}
-        ::-webkit-scrollbar{width:9px;height:9px}
-        ::-webkit-scrollbar-thumb{background:${C.rule2};border-radius:999px}
-        ::-webkit-scrollbar-track{background:transparent}
-        @media (min-width:768px){ aside.pane{width:420px;flex:0 0 420px} }
-        @media (min-width:1400px){ aside.pane{width:460px;flex:0 0 460px} }
-        @media (min-width:1700px){ aside.pane{width:500px;flex:0 0 500px} }`}</style>
+        @media (min-width:768px){ aside.pane{width:300px;flex:0 0 300px} }
+        @media (min-width:1100px){ aside.pane{width:360px;flex:0 0 360px} }
+        @media (min-width:1500px){ aside.pane{width:400px;flex:0 0 400px} }`}</style>
 
-      <header style={{ background: C.surf, borderBottom: `1px solid ${C.rule}`,
-        position: "sticky", top: 0, zIndex: 30 }}>
-        <div className="flex items-stretch gap-3" style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px", height: 56 }}>
-
-          <div className="flex flex-col justify-center shrink-0">
-            <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
-            <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
-          </div>
-
-          <div className="flex items-stretch shrink-0" style={{ marginLeft: 6 }}>
-            {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
-              <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
-                className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
-                <Icon size={13} /> {l}</button>))}
-          </div>
-
+      <header className="flex flex-wrap items-center gap-3 px-5 py-2.5" style={{ background: C.ink, color: "#fff" }}>
+        <div>
+          <div style={{ fontFamily: UI, fontSize: 13, fontWeight: 700 }}>Letter of Engagement</div>
+          <div style={{ fontFamily: UI, fontSize: 10, color: "#9FB3AE", letterSpacing: ".05em", textTransform: "uppercase" }}>Luckmans Duckett Parker · Coventry</div>
+        </div>
+        <div className="flex gap-1 ml-2">
+          {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
+            <button key={v} onClick={() => setTab(v)} className="flex items-center gap-1.5 px-3 py-1.5"
+              style={{ fontFamily: UI, fontSize: 12, color: tab === v ? C.ink : "#fff", background: tab === v ? "#fff" : "rgba(255,255,255,.10)", borderRadius: 3, fontWeight: 600 }}>
+              <Icon size={13} /> {l}</button>))}
+        </div>
+        {tab === "letter" && (
+          <div className="px-3 py-1" style={{ background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.28)", borderRadius: 4 }}>
+            <div style={{ fontFamily: UI, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "#9FB3AE" }}>Our ref</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 600, letterSpacing: ".02em" }}>{model.ref}</div>
+          </div>)}
           {tab === "letter" && (
-            <div className="self-center shrink-0" style={{ background: C.accS, border: `1px solid ${C.rule2}`,
-              borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15 }}>
-              <div style={{ fontFamily: UI, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
-              <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
-            </div>)}
-
-          {tab === "letter" && (
-            <label title={tpl ? tpl.name + " — click to replace" : "Click to choose your letterhead .docx or .dotx"}
-              className="self-center shrink-0 flex items-center gap-1.5"
-              style={{ background: tpl ? C.okBg : C.waBg, color: tpl ? C.ok : C.wa, borderRadius: 999,
-                padding: "4px 11px", fontFamily: UI, fontSize: 10, fontWeight: 700,
-                letterSpacing: ".04em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}>
-              <span style={{ width: 5, height: 5, borderRadius: 999, background: "currentColor" }} />
-              {restoring ? "Checking letterhead" : tpl ? "On your letterhead" : "Choose letterhead"}
+            <label className="px-2.5 py-1 flex items-center gap-1.5"
+              title={tpl ? tpl.name + " — click to replace" : "Click to choose your letterhead .docx or .dotx"}
+              style={{ background: tpl ? "rgba(143,211,184,.18)" : "rgba(214,150,90,.30)", borderRadius: 3,
+                fontFamily: UI, fontSize: 11, color: "#fff", cursor: "pointer",
+                border: tpl ? "1px solid transparent" : "1px solid rgba(255,255,255,.45)" }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: tpl ? "#8FD3B8" : "#D6965A", display: "inline-block" }} />
+              {restoring ? "checking letterhead" : tpl ? "on your letterhead" : "choose letterhead"}
               <input type="file" accept=".docx,.dotx" style={{ display: "none" }}
                 onChange={(e) => e.target.files[0] && loadTpl(e.target.files[0])} />
             </label>)}
-
-          <div className="ml-auto self-center flex items-center gap-2 shrink-0">
-            {tab === "letter" && (<>
-              <button onClick={() => dl(new Blob([toHtml(model, false, lib.letterhead, lib.type)], { type: "text/html" }), model.fileName + ".html")}
-                className="pOsBtn" style={{ fontFamily: UI }}><FileCode2 size={12} /> HTML</button>
-              <button onClick={doWord} className="pOsBtn pri" style={{ fontFamily: UI }}
-                title={tpl ? "Merged into " + tpl.name : "No letterhead loaded: Templates, Letterhead and footer"}>
-                <FileDown size={13} /> Generate engagement letter</button>
-              <button onClick={doPdf} disabled={converting} className="pOsBtn" style={{ fontFamily: UI }}>
-                <Printer size={13} /> {converting ? "Building…" : "PDF"}</button>
-            </>)}
-            {tab === "templates" && (<>
-              <label className="pOsBtn" style={{ fontFamily: UI }}><Upload size={13} /> Import library
-                <input type="file" accept="application/json" style={{ display: "none" }}
-                  onChange={(e) => e.target.files[0] && importLib(e.target.files[0])} /></label>
-              <button onClick={exportLib} className="pOsBtn pri" style={{ fontFamily: UI }}><Download size={13} /> Export library</button>
-            </>)}
-            {tab === "firm" && (<>
-              <span style={{ fontFamily: UI, fontSize: 11, color: C.muted }}>JSON, or CSV columns group, title, name, initials</span>
-              <label className="pOsBtn pri" style={{ fontFamily: UI }}><Upload size={13} /> Import people
-                <input type="file" accept=".json,.csv,text/csv,application/json" style={{ display: "none" }}
-                  onChange={(e) => e.target.files[0] && loadPeople(e.target.files[0])} /></label>
-              <button onClick={exportPeople} className="pOsBtn" style={{ fontFamily: UI }}>
-                <Download size={13} /> Export people</button>
-            </>)}
-          </div>
+        <div className="ml-auto flex items-center gap-2">
+          {tab === "firm" ? null : tab === "templates" ? (<>
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5" style={{ fontFamily: UI, fontSize: 11.5, color: "#fff", background: "rgba(255,255,255,.12)", borderRadius: 3, cursor: "pointer" }}>
+              <Upload size={13} /> Import<input type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => e.target.files[0] && importLib(e.target.files[0])} /></label>
+            <button onClick={exportLib} className="flex items-center gap-1.5 px-3 py-1.5" style={{ fontFamily: UI, fontSize: 12, color: C.ink, background: "#fff", borderRadius: 3, fontWeight: 600 }}><Download size={13} /> Export library</button>
+          </>) : (<>
+            <button onClick={() => dl(new Blob([toHtml(model, false, lib.letterhead, lib.type)], { type: "text/html" }), model.fileName + ".html")} className="flex items-center gap-1.5 px-2.5 py-1.5" style={{ fontFamily: UI, fontSize: 11.5, color: "#fff", background: "rgba(255,255,255,.12)", borderRadius: 3 }}><FileCode2 size={12} /> HTML</button>
+            <button onClick={doWord} title={tpl ? "Merged into " + tpl.name : "No letterhead loaded: Templates, Letterhead and footer"}
+            className="flex items-center gap-1.5 px-3 py-1.5"
+            style={{ fontFamily: UI, fontSize: 12, color: "#fff", background: C.accent, borderRadius: 3, fontWeight: 600 }}>
+            <FileDown size={13} /> Generate engagement letter</button>
+            <button onClick={doPdf} disabled={converting} className="flex items-center gap-1.5 px-3 py-1.5" style={{ fontFamily: UI, fontSize: 12, color: C.ink, background: "#fff", borderRadius: 3, fontWeight: 600, opacity: converting ? .6 : 1 }}><Printer size={13} /> {converting ? "Building…" : "PDF"}</button>
+          </>)}
         </div>
       </header>
 
       {tab === "letter" ? (
-        <div className="flex flex-col gap-4 md:flex-row"
-          style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 28px" }}>
-          <aside className="pane w-full shrink-0 px-4 pb-5 md:sticky md:top-[56px] md:max-h-[calc(100vh-72px)] md:overflow-y-auto" style={ASIDE} >
+        <div className={"flex flex-col " + "md:flex-row"}>
+          <aside className="pane w-full shrink-0 px-4 pb-6 md:h-[calc(100vh-52px)] md:overflow-y-auto md:sticky md:top-0" style={ASIDE} >
+            <H>Engagement</H>
             <R c="1fr"><label><Lab>Client type</Lab>
               <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>{TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}</select></label></R>
             <Lab>Services engaged</Lab>
@@ -1161,7 +1060,7 @@ export default function LetterOfEngagement() {
             </div>
 
             <H>Client</H>
-            <R c="1fr 1.3fr">
+            <R c="1.6fr 1fr">
               <label><Lab>Client name</Lab><T k="client" f={f} set={set} /></label>
               <label><Lab>{type === "individual" ? "Tax year ended" : "Period ended"}</Lab><DateField value={f.periodEnd} onChange={(v) => set("periodEnd", v)} style={inp} /></label>
             </R>
@@ -1205,7 +1104,7 @@ export default function LetterOfEngagement() {
 
             <H>Firm</H>
             <R c="1fr"><label><Lab>Complaints escalation</Lab><S k="escalationName" f={f} set={set} opts={partners.filter((p) => p.name !== f.partnerName).map((p) => ({ v: p.name, l: p.name }))} /></label></R>
-            <R c="1fr 1fr 2.2fr">
+            <R c="1fr 1fr 1.2fr">
               <label><Lab>Cap £</Lab><T k="cap" f={f} set={set} /></label>
               <label><Lab>Terms dated</Lab><T k="tobVersion" f={f} set={set} /></label>
               <label><Lab>Letter date</Lab><DateField value={f.today} onChange={(v) => set("today", v)} style={inp} align="right" /></label>
@@ -1213,15 +1112,13 @@ export default function LetterOfEngagement() {
 
           </aside>
 
-          <main className="flex-1 min-w-0 md:sticky md:top-[56px]" style={{ alignSelf: "flex-start" }}>
-            <div style={{ background: "#E4ECF8", border: `1px solid ${C.rule}`, borderRadius: 12, padding: 16 }}>
-              <iframe title="letter" srcDoc={screenHtml} style={{ width: "100%", maxWidth: "210mm", height: "calc(100vh - 136px)", border: "none", background: "#fff", display: "block", margin: "0 auto", borderRadius: 2, boxShadow: "0 4px 12px rgba(12,26,46,.08),0 16px 40px rgba(12,26,46,.10)" }} />
-            </div>
+          <main className="flex-1 p-2 md:p-3 lg:p-5 min-w-0">
+            <iframe title="letter" srcDoc={screenHtml} style={{ width: "100%", maxWidth: "210mm", height: "calc(100vh - 96px)", border: "none", background: "#fff", display: "block", margin: "0 auto", boxShadow: "0 1px 3px rgba(20,32,31,.1),0 12px 32px rgba(20,32,31,.1)" }} />
           </main>
         </div>
-      ) : tab === "templates" ? (
-        <div className="flex flex-col lg:flex-row gap-4" style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 28px" }}>
-          <aside className="w-full lg:w-72 shrink-0 px-3 py-3 lg:max-h-[calc(100vh-72px)] lg:overflow-y-auto lg:sticky lg:top-[56px]" style={{ background: C.surf, border: `1px solid ${C.rule}`, borderRadius: 12 }}>
+      ) : (
+        <div className="flex flex-col lg:flex-row">
+          <aside className="w-full lg:w-72 shrink-0 px-3 py-3 lg:h-[calc(100vh-52px)] lg:overflow-y-auto lg:sticky lg:top-0" style={{ background: "#fff", borderRight: `1px solid ${C.rule}` }}>
             <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, marginBottom: 6 }}>Covering letter</div>
             <button onClick={() => setSel({ grp: "lh" })} className="w-full text-left px-2 py-1.5 mb-1"
               style={{ fontFamily: UI, fontSize: 12, background: sel.grp === "lh" ? C.soft : "transparent", border: `1px solid ${sel.grp === "lh" ? C.accent : "transparent"}`, borderRadius: 3 }}>Letterhead &amp; footer</button>
@@ -1237,7 +1134,7 @@ export default function LetterOfEngagement() {
                 style={{ fontFamily: MONO, fontSize: 11, background: sel.grp === "sch" && sel.key === k ? C.soft : "transparent", border: `1px solid ${sel.grp === "sch" && sel.key === k ? C.accent : "transparent"}`, borderRadius: 3 }}>{k}</button>))}
           </aside>
 
-          <main className="flex-1 p-4 lg:p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 72px)" }}>
+          <main className="flex-1 p-4 lg:p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 52px)" }}>
             <div className="mx-auto" style={{ maxWidth: 860 }}>
               {sel.grp === "lh" && (() => { const D = lib.letterhead;
                 const setLH = (patch) => setLib({ ...lib, letterhead: { ...D, ...patch } });
@@ -1386,11 +1283,11 @@ export default function LetterOfEngagement() {
             </div>
           </main>
         </div>
-      ) : null}
+      )}
 
       {tab === "firm" && (
-        <main style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 32px" }}>
-          <div style={{ maxWidth: 880 }}>
+        <main className="p-5 lg:p-8 overflow-y-auto" style={{ maxHeight: "calc(100vh - 52px)" }}>
+          <div className="mx-auto" style={{ maxWidth: 760 }}>
             <h2 style={{ fontFamily: UI, fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 4 }}>People</h2>
             <p style={{ fontFamily: UI, fontSize: 12, color: C.muted, marginBottom: 18 }}>
               Initials drive the file reference. The title drives the pronoun used in clause 3 and in the payroll schedule,

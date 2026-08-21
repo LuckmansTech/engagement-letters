@@ -1,0 +1,62 @@
+<header style={{ background: C.surf, borderBottom: `1px solid ${C.rule}`,
+        position: "sticky", top: 0, zIndex: 30 }}>
+        <div className="flex items-stretch gap-3" style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px", height: 56 }}>
+
+          <div className="flex flex-col justify-center shrink-0">
+            <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
+            <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
+          </div>
+
+          <div className="flex items-stretch shrink-0" style={{ marginLeft: 6 }}>
+            {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
+              <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
+                className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
+                <Icon size={13} /> {l}</button>))}
+          </div>
+
+          {tab === "letter" && (
+            <div className="self-center shrink-0" style={{ background: C.accS, border: `1px solid ${C.rule2}`,
+              borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15 }}>
+              <div style={{ fontFamily: UI, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
+              <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
+            </div>)}
+
+          {tab === "letter" && (
+            <label title={tpl ? tpl.name + " — click to replace" : "Click to choose your letterhead .docx or .dotx"}
+              className="self-center shrink-0 flex items-center gap-1.5"
+              style={{ background: tpl ? C.okBg : C.waBg, color: tpl ? C.ok : C.wa, borderRadius: 999,
+                padding: "4px 11px", fontFamily: UI, fontSize: 10, fontWeight: 700,
+                letterSpacing: ".04em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}>
+              <span style={{ width: 5, height: 5, borderRadius: 999, background: "currentColor" }} />
+              {restoring ? "Checking letterhead" : tpl ? "On your letterhead" : "Choose letterhead"}
+              <input type="file" accept=".docx,.dotx" style={{ display: "none" }}
+                onChange={(e) => e.target.files[0] && loadTpl(e.target.files[0])} />
+            </label>)}
+
+          <div className="ml-auto self-center flex items-center gap-2 shrink-0">
+            {tab === "letter" && (<>
+              <button onClick={() => dl(new Blob([toHtml(model, false, lib.letterhead, lib.type)], { type: "text/html" }), model.fileName + ".html")}
+                className="pOsBtn" style={{ fontFamily: UI }}><FileCode2 size={12} /> HTML</button>
+              <button onClick={doWord} className="pOsBtn pri" style={{ fontFamily: UI }}
+                title={tpl ? "Merged into " + tpl.name : "No letterhead loaded: Templates, Letterhead and footer"}>
+                <FileDown size={13} /> Generate engagement letter</button>
+              <button onClick={doPdf} disabled={converting} className="pOsBtn" style={{ fontFamily: UI }}>
+                <Printer size={13} /> {converting ? "Building…" : "PDF"}</button>
+            </>)}
+            {tab === "templates" && (<>
+              <label className="pOsBtn" style={{ fontFamily: UI }}><Upload size={13} /> Import library
+                <input type="file" accept="application/json" style={{ display: "none" }}
+                  onChange={(e) => e.target.files[0] && importLib(e.target.files[0])} /></label>
+              <button onClick={exportLib} className="pOsBtn pri" style={{ fontFamily: UI }}><Download size={13} /> Export library</button>
+            </>)}
+            {tab === "firm" && (<>
+              <span style={{ fontFamily: UI, fontSize: 11, color: C.muted }}>JSON, or CSV columns group, title, name, initials</span>
+              <label className="pOsBtn pri" style={{ fontFamily: UI }}><Upload size={13} /> Import people
+                <input type="file" accept=".json,.csv,text/csv,application/json" style={{ display: "none" }}
+                  onChange={(e) => e.target.files[0] && loadPeople(e.target.files[0])} /></label>
+              <button onClick={exportPeople} className="pOsBtn" style={{ fontFamily: UI }}>
+                <Download size={13} /> Export people</button>
+            </>)}
+          </div>
+        </div>
+      </header>
