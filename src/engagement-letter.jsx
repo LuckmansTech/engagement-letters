@@ -886,7 +886,13 @@ const Pick = ({ k, f, set, opts }) => {
   };
   useEffect(() => {
     if (!box) return;
-    const off = () => shut();
+    /* Capture-phase scroll also fires for the menu's OWN scrolling, which would
+       close it the moment you tried to scroll the list. Ignore those. */
+    const off = (e) => {
+      const t = e && e.target;
+      if (t && t.closest && t.closest('[data-pick-menu="1"]')) return;
+      shut();
+    };
     window.addEventListener("scroll", off, true);
     window.addEventListener("resize", off);
     return () => { window.removeEventListener("scroll", off, true); window.removeEventListener("resize", off); };
@@ -959,13 +965,13 @@ export default function LetterOfEngagement() {
      people share "Jasmeet Kaur", so those two carry their code in the name to
      keep the reference correct. */
   const [staff, setStaff] = useState([
-    { name: "Ash Rishiraj", initials: "AKR" },
+    { name: "A K Rishiraj", initials: "AKR" },
     { name: "Adam Page", initials: "AP2" },
-    { name: "Graham Parker", initials: "GPP" },
-    { name: "Karl Goddard", initials: "KJG" },
-    { name: "Mark Spafford", initials: "MDS" },
-    { name: "Nick Waterhouse-Brown", initials: "NWB" },
-    { name: "Steve Twigger", initials: "SAT" },
+    { name: "G P Parker", initials: "GPP" },
+    { name: "K J Goddard", initials: "KJG" },
+    { name: "M D Spafford", initials: "MDS" },
+    { name: "N Waterhouse-Brown", initials: "NWB" },
+    { name: "S A Twigger", initials: "SAT" },
     { name: "Ayushi Aggarwal", initials: "AA" },
     { name: "Amit Gaur", initials: "AG" },
     { name: "Ayushi Jain", initials: "AJA" },

@@ -26,7 +26,13 @@ const Pick = ({ k, f, set, opts }) => {
   };
   useEffect(() => {
     if (!box) return;
-    const off = () => shut();
+    /* Capture-phase scroll also fires for the menu's OWN scrolling, which would
+       close it the moment you tried to scroll the list. Ignore those. */
+    const off = (e) => {
+      const t = e && e.target;
+      if (t && t.closest && t.closest('[data-pick-menu="1"]')) return;
+      shut();
+    };
     window.addEventListener("scroll", off, true);
     window.addEventListener("resize", off);
     return () => { window.removeEventListener("scroll", off, true); window.removeEventListener("resize", off); };
