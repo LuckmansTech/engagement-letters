@@ -858,6 +858,76 @@ const H = ({ children }) => <div style={{ fontFamily: UI, fontSize: 10, fontWeig
 const R = ({ c, children }) => <div style={{ display: "grid", gridTemplateColumns: c, gap: 10, marginBottom: 11 }}>{children}</div>;
 const T = ({ k, f, set }) => <input value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={INP} />;
 const S = ({ k, f, set, opts }) => <select value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={INP}>{opts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select>;
+/* A type-to-search picker for the long staff list. Matches on any word in the
+   label, so "kelly" finds Jordan Kelly-Tams and "klj" finds Kevin Lloyd-James
+   through the initials in brackets. The menu is position:fixed so the panel's
+   own scrolling cannot clip it, and closes on scroll rather than drifting. */
+const Pick = ({ k, f, set, opts }) => {
+  const [q, setQ] = useState(null);
+  const [hi, setHi] = useState(0);
+  const [box, setBox] = useState(null);
+  const ref = useRef(null);
+  const cur = opts.find((o) => o.v === f[k]);
+  const terms = (q || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const list = terms.length === 0 ? opts : opts.filter((o) => {
+    const words = o.l.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    return terms.every((t) => words.some((w) => w.startsWith(t)));
+  });
+  const shut = () => { setQ(null); setBox(null); };
+  const show = () => {
+    const r = ref.current.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    const down = below > 220;
+    setBox({ left: r.left, width: r.width,
+      top: down ? r.bottom + 3 : null,
+      bottom: down ? null : window.innerHeight - r.top + 3,
+      max: Math.max(140, Math.min(260, (down ? below : r.top) - 16)) });
+    setHi(0);
+  };
+  useEffect(() => {
+    if (!box) return;
+    const off = () => shut();
+    window.addEventListener("scroll", off, true);
+    window.addEventListener("resize", off);
+    return () => { window.removeEventListener("scroll", off, true); window.removeEventListener("resize", off); };
+  }, [box]);
+  const choose = (o) => { set(k, o.v); shut(); if (ref.current) ref.current.blur(); };
+  return (
+    <div style={{ position: "relative" }}>
+      <input ref={ref} value={q === null ? (cur ? cur.l : "") : q}
+        placeholder="Type a name or initials"
+        onFocus={() => { show(); setTimeout(() => ref.current && ref.current.select(), 0); }}
+        onClick={() => { if (!box) show(); }}
+        onChange={(e) => { setQ(e.target.value); setHi(0); if (!box) show(); }}
+        onBlur={() => setTimeout(shut, 130)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") { e.preventDefault(); if (!box) show(); else setHi((h) => Math.min(h + 1, list.length - 1)); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+          else if (e.key === "Enter") { e.preventDefault(); if (list[hi]) choose(list[hi]); }
+          else if (e.key === "Escape") { e.preventDefault(); shut(); if (ref.current) ref.current.blur(); }
+        }}
+        style={{ ...INP, cursor: "text" }} />
+      {box && (
+        <div data-pick-menu="1" style={{ position: "fixed", left: box.left, width: box.width,
+          top: box.top === null ? undefined : box.top,
+          bottom: box.bottom === null ? undefined : box.bottom,
+          maxHeight: box.max, overflowY: "auto", zIndex: 60, padding: 3,
+          background: C.surf, border: `1px solid ${C.rule2}`, borderRadius: 8,
+          boxShadow: "0 6px 22px rgba(12,26,46,.16)" }}>
+          {list.length === 0 && (
+            <div style={{ padding: "7px 9px", fontFamily: UI, fontSize: 12, color: C.muted }}>No match</div>)}
+          {list.map((o, i) => (
+            <div key={o.v || "__none"} onMouseEnter={() => setHi(i)}
+              onMouseDown={(e) => { e.preventDefault(); choose(o); }}
+              style={{ padding: "6px 9px", borderRadius: 6, fontFamily: UI, fontSize: 12.5,
+                cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                background: i === hi ? C.accL : "transparent",
+                color: i === hi ? C.accent : C.ink,
+                fontWeight: o.v === f[k] ? 700 : 400 }}>{o.l}</div>))}
+        </div>)}
+    </div>
+  );
+};
 const TA = ({ k, f, set, rows }) => <textarea rows={rows || 3} value={f[k] || ""} onChange={(e) => set(k, e.target.value)} style={{ ...INP, resize: "vertical" }} />;
 const TITLE_OPTS = TITLES.map((t) => ({ v: t, l: t || "\u2014" }));
 
@@ -1221,10 +1291,10 @@ export default function LetterOfEngagement() {
             </div>
             <R c="1fr 1fr">
               <label><Lab>Partner</Lab><S k="partnerName" f={f} set={set} opts={partners.map((p) => ({ v: p.name, l: p.name + " (" + p.initials + ")" }))} /></label>
-              <label><Lab>Manager</Lab><S k="manager" f={f} set={set} opts={[{ v: "", l: "None" }].concat(staff.map((s) => ({ v: s.name, l: s.name.endsWith(")") ? s.name : s.name + " (" + s.initials + ")" })))} /></label>
+              <label><Lab>Manager</Lab><Pick k="manager" f={f} set={set} opts={[{ v: "", l: "None" }].concat(staff.map((s) => ({ v: s.name, l: s.name.endsWith(")") ? s.name : s.name + " (" + s.initials + ")" })))} /></label>
             </R>
             <R c="1fr 1fr">
-              <label><Lab>Generated by</Lab><S k="generatedBy" f={f} set={set} opts={staff.map((s) => ({ v: s.name, l: s.name.endsWith(")") ? s.name : s.name + " (" + s.initials + ")" }))} /></label>
+              <label><Lab>Generated by</Lab><Pick k="generatedBy" f={f} set={set} opts={staff.map((s) => ({ v: s.name, l: s.name.endsWith(")") ? s.name : s.name + " (" + s.initials + ")" }))} /></label>
               <label><Lab>Client code</Lab><input value={f.clientRef || ""} onChange={(e) => set("clientRef", e.target.value.toUpperCase())} style={{ ...inp, fontFamily: MONO }} /></label>
             </R>
 
