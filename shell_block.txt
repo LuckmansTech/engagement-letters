@@ -1,26 +1,35 @@
 <header style={{ background: C.surf, borderBottom: `1px solid ${C.rule}`,
         position: "sticky", top: 0, zIndex: 30 }}>
-        <div className="flex items-stretch gap-3" style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px", height: 56 }}>
+        {/* three columns, so Our ref sits at the true centre of the bar while
+           staying in normal flow. Absolute centring would overlap the tabs at
+           narrow widths; equal 1fr flanks cannot. */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+          alignItems: "stretch", columnGap: 12, maxWidth: 1600, margin: "0 auto",
+          padding: "0 20px", height: 56 }}>
 
-          <div className="flex flex-col justify-center shrink-0">
-            <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
-            <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
+          <div className="flex items-stretch gap-3 min-w-0">
+            <div className="flex flex-col justify-center shrink-0">
+              <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
+              <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
+            </div>
+            <div className="flex items-stretch shrink-0">
+              {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
+                <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
+                  className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
+                  <Icon size={13} /> {l}</button>))}
+            </div>
           </div>
 
-          <div className="flex items-stretch shrink-0" style={{ marginLeft: 6 }}>
-            {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
-              <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
-                className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
-                <Icon size={13} /> {l}</button>))}
+          <div className="self-center">
+            {tab === "letter" && (
+              <div style={{ background: C.accS, border: `1px solid ${C.rule2}`,
+                borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15, whiteSpace: "nowrap" }}>
+                <div style={{ fontFamily: UI, fontSize: 8, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
+                <div style={{ fontFamily: MONO, fontSize: 13.5, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
+              </div>)}
           </div>
 
-          {tab === "letter" && (
-            <div className="self-center shrink-0" style={{ background: C.accS, border: `1px solid ${C.rule2}`,
-              borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15 }}>
-              <div style={{ fontFamily: UI, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
-              <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
-            </div>)}
-
+          <div className="self-center flex items-center gap-2 justify-end">
           {tab === "letter" && (
             <label title={tpl ? tpl.name + " — click to replace" : "Click to choose your letterhead .docx or .dotx"}
               className="self-center shrink-0 flex items-center gap-1.5"
@@ -33,7 +42,6 @@
                 onChange={(e) => e.target.files[0] && loadTpl(e.target.files[0])} />
             </label>)}
 
-          <div className="ml-auto self-center flex items-center gap-2 shrink-0">
             {tab === "letter" && (<>
               <button onClick={() => dl(new Blob([toHtml(model, false, lib.letterhead, lib.type)], { type: "text/html" }), model.fileName + ".html")}
                 className="pOsBtn" style={{ fontFamily: UI }}><FileCode2 size={12} /> HTML</button>

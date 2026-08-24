@@ -865,15 +865,7 @@ export default function LetterOfEngagement() {
   const [tab, setTab] = useState("letter");
   const [tpl, setTpl] = useState(null);   // { name, buf }
   const [restoring, setRestoring] = useState(true);
-  React.useEffect(() => { (async () => {
-    try {
-      const r = await window.storage.get("loe:letterhead");
-      if (r && r.value) { const v = JSON.parse(r.value);
-        setTpl({ name: v.name, buf: b64ToAb(v.b64) });
-        if (v.lh) setLib((L) => ({ ...L, letterhead: { ...L.letterhead, ...v.lh } })); }
-    } catch (e) { /* nothing stored yet */ }
-    setRestoring(false);
-  })(); }, []);
+  React.useEffect(() => { setRestoring(false); }, []);
   const [lib, setLib] = useState(SEED_LIBRARY);
   const [type, setType] = useState("ltd");
   const [svc, setSvc] = useState({ accounts: true, tax: true, vat: true, payroll: true, mtd: false });
@@ -882,6 +874,7 @@ export default function LetterOfEngagement() {
     { name: "M D Spafford", initials: "MDS", title: "Mr" },
     { name: "N Waterhouse-Brown", initials: "NWB", title: "Mr" },
     { name: "K J Goddard", initials: "KJG", title: "Mr" },
+    { name: "Adam Page", initials: "AP2", title: "Mr" },
   ]);
   const [staff, setStaff] = useState([
     { title: "Mr", name: "J L Bennett", initials: "JLB" }, { title: "Mrs", name: "S L Clarke", initials: "SLC" },
@@ -964,59 +957,6 @@ export default function LetterOfEngagement() {
     };
     r.readAsArrayBuffer(file); };
 
-  /* ---------- firm people: imported, not hardcoded ----------
-     Accepts JSON { partners: [...], staff: [...] } or a CSV with a header row
-     naming the columns in any order: group, title, name, initials. Group is
-     "partner" or "director" for the partner list, anything else for staff.
-     Missing initials are derived from the name. The list persists. */
-  const [peopleReady, setPeopleReady] = useState(false);
-  useEffect(() => { (async () => {
-    try {
-      const r = await window.storage.get("loe:people");
-      if (r && r.value) { const v = JSON.parse(r.value);
-        if (Array.isArray(v.partners) && v.partners.length) setPartners(v.partners);
-        if (Array.isArray(v.staff) && v.staff.length) setStaff(v.staff); }
-    } catch (e) { /* nothing stored yet */ }
-    setPeopleReady(true);
-  })(); }, []);
-  useEffect(() => { if (!peopleReady) return;
-    try { window.storage.set("loe:people", JSON.stringify({ partners, staff })); } catch (e) {}
-  }, [partners, staff, peopleReady]);
-
-  /* An imported list can drop whoever is currently selected on the Letter tab. */
-  useEffect(() => {
-    if (partners.length && !partners.some((x) => x.name === f.partnerName)) set("partnerName", partners[0].name);
-    if (partners.length > 1 && !partners.some((x) => x.name === f.escalationName && x.name !== f.partnerName))
-      set("escalationName", (partners.find((x) => x.name !== f.partnerName) || partners[0]).name);
-    if (staff.length && !staff.some((x) => x.name === f.generatedBy)) set("generatedBy", staff[0].name);
-  }, [partners, staff]);
-
-  const parsePeople = (text, name) => {
-    if (/\.json$/i.test(name)) { const v = JSON.parse(text);
-      return { partners: v.partners || [], staff: v.staff || [] }; }
-    const rows = text.trim().split(/\r?\n/).map((l) => l.split(",").map((c) => c.trim().replace(/^"|"$/g, "")));
-    const head = (rows.shift() || []).map((h) => h.toLowerCase());
-    const at = (r, k) => { const i = head.indexOf(k); return i < 0 ? "" : (r[i] || ""); };
-    const out = { partners: [], staff: [] };
-    rows.filter((r) => r.join("").length).forEach((r) => {
-      const q = { title: at(r, "title"), name: at(r, "name"), initials: at(r, "initials").toUpperCase() };
-      if (!q.name) return;
-      if (!q.initials) q.initials = q.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase();
-      (/^part|^dir/i.test(at(r, "group")) ? out.partners : out.staff).push(q);
-    });
-    return out;
-  };
-  const loadPeople = (file) => { const r = new FileReader();
-    r.onload = () => { try {
-      const got = parsePeople(String(r.result), file.name);
-      if (!got.partners.length && !got.staff.length) throw new Error("no usable rows found");
-      if (got.partners.length) setPartners(got.partners);
-      if (got.staff.length) setStaff(got.staff);
-    } catch (err) { alert("Could not read that people list: " + err.message); } };
-    r.readAsText(file); };
-  const exportPeople = () => dl(new Blob([JSON.stringify({ partners, staff }, null, 2)],
-    { type: "application/json" }), "loe-people.json");
-
   const inp = INP; const _unused = { fontFamily: UI, fontSize: 12, color: C.ink, background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 3, padding: "4px 6px", width: "100%", minWidth: 0, boxSizing: "border-box" };
 
   /* ---------- templates tab ---------- */
@@ -1079,40 +1019,37 @@ export default function LetterOfEngagement() {
 
       <header style={{ background: C.surf, borderBottom: `1px solid ${C.rule}`,
         position: "sticky", top: 0, zIndex: 30 }}>
-        <div className="flex items-stretch gap-3" style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px", height: 56 }}>
+        {/* three columns, so Our ref sits at the true centre of the bar while
+           staying in normal flow. Absolute centring would overlap the tabs at
+           narrow widths; equal 1fr flanks cannot. */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+          alignItems: "stretch", columnGap: 12, maxWidth: 1600, margin: "0 auto",
+          padding: "0 20px", height: 56 }}>
 
-          <div className="flex flex-col justify-center shrink-0">
-            <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
-            <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
+          <div className="flex items-stretch gap-3 min-w-0">
+            <div className="flex flex-col justify-center shrink-0">
+              <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>Letter of Engagement</div>
+              <div style={{ fontFamily: UI, fontSize: 9.5, fontWeight: 600, letterSpacing: ".09em", textTransform: "uppercase", color: C.muted, lineHeight: 1.3 }}>Luckmans Duckett Parker · Coventry</div>
+            </div>
+            <div className="flex items-stretch shrink-0">
+              {[["letter", "Letter", FileText]].map(([v, l, Icon]) => (
+                <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
+                  className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
+                  <Icon size={13} /> {l}</button>))}
+            </div>
           </div>
 
-          <div className="flex items-stretch shrink-0" style={{ marginLeft: 6 }}>
-            {[["letter", "Letter", FileText]].map(([v, l, Icon]) => (
-              <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
-                className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
-                <Icon size={13} /> {l}</button>))}
+          <div className="self-center">
+            {tab === "letter" && (
+              <div style={{ background: C.accS, border: `1px solid ${C.rule2}`,
+                borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15, whiteSpace: "nowrap" }}>
+                <div style={{ fontFamily: UI, fontSize: 8, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
+                <div style={{ fontFamily: MONO, fontSize: 13.5, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
+              </div>)}
           </div>
 
-          {tab === "letter" && (
-            <div className="self-center shrink-0" style={{ background: C.accS, border: `1px solid ${C.rule2}`,
-              borderRadius: 8, padding: "2px 12px 4px", lineHeight: 1.15 }}>
-              <div style={{ fontFamily: UI, fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>Our ref</div>
-              <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 600, letterSpacing: ".02em", color: C.accent }}>{model.ref}</div>
-            </div>)}
+          <div className="self-center flex items-center gap-2 justify-end">
 
-          {tab === "letter" && (
-            <label title={tpl ? tpl.name + " — click to replace" : "Click to choose your letterhead .docx or .dotx"}
-              className="self-center shrink-0 flex items-center gap-1.5"
-              style={{ background: tpl ? C.okBg : C.waBg, color: tpl ? C.ok : C.wa, borderRadius: 999,
-                padding: "4px 11px", fontFamily: UI, fontSize: 10, fontWeight: 700,
-                letterSpacing: ".04em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}>
-              <span style={{ width: 5, height: 5, borderRadius: 999, background: "currentColor" }} />
-              {restoring ? "Checking letterhead" : tpl ? "On your letterhead" : "Choose letterhead"}
-              <input type="file" accept=".docx,.dotx" style={{ display: "none" }}
-                onChange={(e) => e.target.files[0] && loadTpl(e.target.files[0])} />
-            </label>)}
-
-          <div className="ml-auto self-center flex items-center gap-2 shrink-0">
             {tab === "letter" && (<>
               <button onClick={() => dl(new Blob([toHtml(model, false, lib.letterhead, lib.type)], { type: "text/html" }), model.fileName + ".html")}
                 className="pOsBtn" style={{ fontFamily: UI }}><FileCode2 size={12} /> HTML</button>

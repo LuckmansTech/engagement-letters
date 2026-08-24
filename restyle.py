@@ -203,9 +203,10 @@ sub(r'\n      \)\}\n\n      \{tab === "firm" && \(',
 
 # ------------------------------------------- 8. firm people: imported, kept
 # Held in people_block.txt so the JSX is not buried in a Python string.
-sub(r'    r\.readAsArrayBuffer\(file\); \};',
-    io.open("people_block.txt", encoding="utf-8").read().rstrip("\n"),
-    "firm people import/export, persisted")
+if ADMIN:
+    sub(r'    r\.readAsArrayBuffer\(file\); \};',
+        io.open("people_block.txt", encoding="utf-8").read().rstrip("\n"),
+        "firm people import/export, persisted")
 
 # ------------------------------------------- 9. drop the first section header
 # "Engagement" captions a single control and repeats what the page already
@@ -227,6 +228,16 @@ if not ADMIN:
         "public build: library import/export removed")
     sub(r'\n *\{tab === "firm" && \(<>[\s\S]*?</>\)\}', '',
         "public build: people import/export removed")
+    # the letterhead picker: choosing the firm's Word template is an admin act
+    sub(r'\n *\{tab === "letter" && \(\n *<label title=\{tpl \? tpl\.name[\s\S]*?</label>\)\}', '',
+        "public build: letterhead picker removed")
+
+    # No stored template is restored either, so the built-in letterhead from
+    # the clause library is what everyone gets, every time.
+    sub(r'React\.useEffect\(\(\) => \{ \(async \(\) => \{\n *try \{\n *const r = await window\.storage\.get\("loe:letterhead"\);[\s\S]*?setRestoring\(false\);\n *\}\)\(\); \}, \[\]\);',
+        "React.useEffect(() => { setRestoring(false); }, []);",
+        "public build: always the built-in letterhead")
+
     # the whole Templates pane
     sub(r'\n      \) : tab === "templates" \? \([\s\S]*?\n      \) : null\}', '\n      ) : null}',
         "public build: clause library pane removed")
@@ -256,6 +267,14 @@ subf(r'(<R c=")1fr("><label><Lab>Complaints escalation</Lab>.*?</R>)\n *<R c="1f
        + '\n              <label><Lab>Terms dated</Lab><T k="tobVersion" f={f} set={set} /></label>'
        + '\n            </R>',
      "cap and terms join complaints escalation")
+
+# ------------------------------------------- 13. firm people, shipped defaults
+# The public build has no Firm tab, so the partner list can only be changed
+# here. Initials are given explicitly because AP would collide.
+sub(r'\{ name: "K J Goddard", initials: "KJG", title: "Mr" \},',
+    '{ name: "K J Goddard", initials: "KJG", title: "Mr" },\n'
+    '    { name: "Adam Page", initials: "AP2", title: "Mr" },',
+    "Adam Page added to the partner list")
 
 io.open(OUT, "w", encoding="utf-8").write(s)
 print("")
