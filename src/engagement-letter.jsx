@@ -865,7 +865,14 @@ export default function LetterOfEngagement() {
   const [tab, setTab] = useState("letter");
   const [tpl, setTpl] = useState(null);   // { name, buf }
   const [restoring, setRestoring] = useState(true);
-  React.useEffect(() => { setRestoring(false); }, []);
+  React.useEffect(() => { (async () => {
+    try {
+      const r = await fetch("./letterhead.docx");
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      setTpl({ name: "blank-letterhead.docx", buf: await r.arrayBuffer() });
+    } catch (e) { console.warn("published letterhead not loaded:", e); }
+    setRestoring(false);
+  })(); }, []);
   const [lib, setLib] = useState(SEED_LIBRARY);
   const [type, setType] = useState("ltd");
   const [svc, setSvc] = useState({ accounts: true, tax: true, vat: true, payroll: true, mtd: false });

@@ -232,11 +232,28 @@ if not ADMIN:
     sub(r'\n *\{tab === "letter" && \(\n *<label title=\{tpl \? tpl\.name[\s\S]*?</label>\)\}', '',
         "public build: letterhead picker removed")
 
-    # No stored template is restored either, so the built-in letterhead from
-    # the clause library is what everyone gets, every time.
+    # The letterhead comes from a file published next to the bundle, so one
+    # letterhead serves everyone and nothing in the browser can override it.
+    if os.path.exists("letterhead.json"):
+        import json as _json
+        _name = _json.load(io.open("letterhead.json", encoding="utf-8"))["name"]
+        _repl = ('React.useEffect(() => { (async () => {\n'
+                 '    try {\n'
+                 '      const r = await fetch("./letterhead.docx");\n'
+                 '      if (!r.ok) throw new Error("HTTP " + r.status);\n'
+                 '      setTpl({ name: ' + _json.dumps(_name) + ', buf: await r.arrayBuffer() });\n'
+                 '    } catch (e) { console.warn("published letterhead not loaded:", e); }\n'
+                 '    setRestoring(false);\n'
+                 '  })(); }, []);')
+        _label = "letterhead published as docs/letterhead.docx (" + _name + ")"
+    else:
+        _repl = "React.useEffect(() => { setRestoring(false); }, []);"
+        _label = "public build: letterhead rebuilt from the clause library"
+        warnings.append("no letterhead.json, so letters use the letterhead rebuilt "
+                        "from the clause library rather than the firm's Word template. "
+                        "Run ./bake-letterhead.sh <file.docx> to publish one.")
     sub(r'React\.useEffect\(\(\) => \{ \(async \(\) => \{\n *try \{\n *const r = await window\.storage\.get\("loe:letterhead"\);[\s\S]*?setRestoring\(false\);\n *\}\)\(\); \}, \[\]\);',
-        "React.useEffect(() => { setRestoring(false); }, []);",
-        "public build: always the built-in letterhead")
+        _repl, _label)
 
     # the whole Templates pane
     sub(r'\n      \) : tab === "templates" \? \([\s\S]*?\n      \) : null\}', '\n      ) : null}',
