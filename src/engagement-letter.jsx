@@ -891,7 +891,7 @@ export default function LetterOfEngagement() {
   const [f, setF] = useState({
     client: "Hartwell Joinery Limited", salTitle: "Mr", salName: "Hartwell",
     address: "Unit 7, Bayton Road Industrial Estate\nExhall\nCoventry\nCV7 9EJ",
-    today: "1st August 2026", periodEnd: "31st March 2027",
+    today: fmtDate(new Date()), periodEnd: "31st March 2027",
     prevMode: "named", prevAdviser: "Brandon Accountancy Limited",
     npTitle: "Mr", nominated: "Daniel Hartwell", pcTitle: "Mrs", payrollContact: "Ruth Hartwell",
     sig1Title: "Mr", sig1: "D J HARTWELL", sig1Role: "Director",
@@ -1087,7 +1087,7 @@ export default function LetterOfEngagement() {
           </div>
 
           <div className="flex items-stretch shrink-0" style={{ marginLeft: 6 }}>
-            {[["letter", "Letter", FileText], ["templates", "Templates", Layers], ["firm", "Firm", Users]].map(([v, l, Icon]) => (
+            {[["letter", "Letter", FileText]].map(([v, l, Icon]) => (
               <button key={v} onClick={() => setTab(v)} data-on={tab === v ? "1" : "0"}
                 className="pOsTab flex items-center gap-1.5" style={{ fontFamily: UI, fontSize: 12.5 }}>
                 <Icon size={13} /> {l}</button>))}
@@ -1122,20 +1122,6 @@ export default function LetterOfEngagement() {
               <button onClick={doPdf} disabled={converting} className="pOsBtn" style={{ fontFamily: UI }}>
                 <Printer size={13} /> {converting ? "Building…" : "PDF"}</button>
             </>)}
-            {tab === "templates" && (<>
-              <label className="pOsBtn" style={{ fontFamily: UI }}><Upload size={13} /> Import library
-                <input type="file" accept="application/json" style={{ display: "none" }}
-                  onChange={(e) => e.target.files[0] && importLib(e.target.files[0])} /></label>
-              <button onClick={exportLib} className="pOsBtn pri" style={{ fontFamily: UI }}><Download size={13} /> Export library</button>
-            </>)}
-            {tab === "firm" && (<>
-              <span style={{ fontFamily: UI, fontSize: 11, color: C.muted }}>JSON, or CSV columns group, title, name, initials</span>
-              <label className="pOsBtn pri" style={{ fontFamily: UI }}><Upload size={13} /> Import people
-                <input type="file" accept=".json,.csv,text/csv,application/json" style={{ display: "none" }}
-                  onChange={(e) => e.target.files[0] && loadPeople(e.target.files[0])} /></label>
-              <button onClick={exportPeople} className="pOsBtn" style={{ fontFamily: UI }}>
-                <Download size={13} /> Export people</button>
-            </>)}
           </div>
         </div>
       </header>
@@ -1144,8 +1130,9 @@ export default function LetterOfEngagement() {
         <div className="flex flex-col gap-4 md:flex-row"
           style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 28px" }}>
           <aside className="pane w-full shrink-0 px-4 pb-5 md:sticky md:top-[56px] md:max-h-[calc(100vh-72px)] md:overflow-y-auto" style={ASIDE} >
-            <R c="1fr"><label><Lab>Client type</Lab>
-              <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>{TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}</select></label></R>
+            <R c="1fr 1fr"><label><Lab>Client type</Lab>
+              <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>{TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}</select></label>
+              <label><Lab>Letter date</Lab><DateField value={f.today} onChange={(v) => set("today", v)} style={inp} align="right" /></label></R>
             <Lab>Services engaged</Lab>
             <div className="flex flex-wrap" style={{ gap: 4, marginBottom: 4 }}>
               {avail.map((s) => (
@@ -1161,7 +1148,7 @@ export default function LetterOfEngagement() {
             </div>
 
             <H>Client</H>
-            <R c="1fr 1.3fr">
+            <R c="1.6fr 1fr">
               <label><Lab>Client name</Lab><T k="client" f={f} set={set} /></label>
               <label><Lab>{type === "individual" ? "Tax year ended" : "Period ended"}</Lab><DateField value={f.periodEnd} onChange={(v) => set("periodEnd", v)} style={inp} /></label>
             </R>
@@ -1204,11 +1191,9 @@ export default function LetterOfEngagement() {
             </R>
 
             <H>Firm</H>
-            <R c="1fr"><label><Lab>Complaints escalation</Lab><S k="escalationName" f={f} set={set} opts={partners.filter((p) => p.name !== f.partnerName).map((p) => ({ v: p.name, l: p.name }))} /></label></R>
-            <R c="1fr 1fr 2.2fr">
+            <R c="1.6fr 1fr 1fr"><label><Lab>Complaints escalation</Lab><S k="escalationName" f={f} set={set} opts={partners.filter((p) => p.name !== f.partnerName).map((p) => ({ v: p.name, l: p.name }))} /></label>
               <label><Lab>Cap £</Lab><T k="cap" f={f} set={set} /></label>
               <label><Lab>Terms dated</Lab><T k="tobVersion" f={f} set={set} /></label>
-              <label><Lab>Letter date</Lab><DateField value={f.today} onChange={(v) => set("today", v)} style={inp} align="right" /></label>
             </R>
 
           </aside>
@@ -1219,223 +1204,8 @@ export default function LetterOfEngagement() {
             </div>
           </main>
         </div>
-      ) : tab === "templates" ? (
-        <div className="flex flex-col lg:flex-row gap-4" style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 28px" }}>
-          <aside className="w-full lg:w-72 shrink-0 px-3 py-3 lg:max-h-[calc(100vh-72px)] lg:overflow-y-auto lg:sticky lg:top-[56px]" style={{ background: C.surf, border: `1px solid ${C.rule}`, borderRadius: 12 }}>
-            <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, marginBottom: 6 }}>Covering letter</div>
-            <button onClick={() => setSel({ grp: "lh" })} className="w-full text-left px-2 py-1.5 mb-1"
-              style={{ fontFamily: UI, fontSize: 12, background: sel.grp === "lh" ? C.soft : "transparent", border: `1px solid ${sel.grp === "lh" ? C.accent : "transparent"}`, borderRadius: 3 }}>Letterhead &amp; footer</button>
-            <button onClick={() => setSel({ grp: "cover" })} className="w-full text-left px-2 py-1.5 mb-3"
-              style={{ fontFamily: UI, fontSize: 12, background: sel.grp === "cover" ? C.soft : "transparent", border: `1px solid ${sel.grp === "cover" ? C.accent : "transparent"}`, borderRadius: 3 }}>Blocks &amp; conditions ({lib.cover.length})</button>
-            <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, marginBottom: 6 }}>Terms of business</div>
-            {lib.terms.map((c, i) => (
-              <button key={i} onClick={() => setSel({ grp: "terms", idx: i })} className="w-full text-left px-2 py-1 mb-0.5"
-                style={{ fontFamily: UI, fontSize: 11.5, background: sel.grp === "terms" && sel.idx === i ? C.soft : "transparent", border: `1px solid ${sel.grp === "terms" && sel.idx === i ? C.accent : "transparent"}`, borderRadius: 3 }}>{i + 1}. {c.title}</button>))}
-            <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, margin: "12px 0 6px" }}>Schedules</div>
-            {Object.keys(lib.sch).map((k) => (
-              <button key={k} onClick={() => setSel({ grp: "sch", key: k })} className="w-full text-left px-2 py-1 mb-0.5"
-                style={{ fontFamily: MONO, fontSize: 11, background: sel.grp === "sch" && sel.key === k ? C.soft : "transparent", border: `1px solid ${sel.grp === "sch" && sel.key === k ? C.accent : "transparent"}`, borderRadius: 3 }}>{k}</button>))}
-          </aside>
-
-          <main className="flex-1 p-4 lg:p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 72px)" }}>
-            <div className="mx-auto" style={{ maxWidth: 860 }}>
-              {sel.grp === "lh" && (() => { const D = lib.letterhead;
-                const setLH = (patch) => setLib({ ...lib, letterhead: { ...D, ...patch } });
-                const upload = (key, e) => { const fl = e.target.files[0]; if (!fl) return;
-                  const r = new FileReader(); r.onload = () => setLH({ [key]: r.result }); r.readAsDataURL(fl); };
-                const Num = ({ l, k }) => <label><Lab>{l}</Lab><input type="number" value={D[k]} onChange={(e) => setLH({ [k]: +e.target.value })} style={inp} /></label>;
-                return (<>
-                <h2 style={{ fontFamily: UI, fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Letterhead and footer</h2>
-                <p style={{ fontFamily: UI, fontSize: 12, color: C.muted, marginBottom: 16 }}>
-                  Upload your own artwork and set the geometry. These values feed both the screen and the Word file, and travel with the exported library.</p>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-                  <div className="p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <Lab>Firm logo</Lab>
-                    <div style={{ background: C.shell, borderRadius: 3, padding: 10, textAlign: "center", marginBottom: 8 }}>
-                      <img src={D.logo || ("data:image/png;base64," + LOGO)} style={{ maxWidth: "100%", maxHeight: 110 }} /></div>
-                    <label style={{ fontFamily: UI, fontSize: 11.5, color: C.accent, fontWeight: 600, cursor: "pointer" }}>
-                      Replace<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => upload("logo", e)} /></label>
-                  </div>
-                  <div className="p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <Lab>Badge at foot of column</Lab>
-                    <div style={{ background: C.shell, borderRadius: 3, padding: 10, textAlign: "center", marginBottom: 8 }}>
-                      <img src={D.badge || ("data:image/png;base64," + ICAEW)} style={{ maxWidth: "100%", maxHeight: 110 }} /></div>
-                    <label style={{ fontFamily: UI, fontSize: 11.5, color: C.accent, fontWeight: 600, cursor: "pointer" }}>
-                      Replace<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => upload("badge", e)} /></label>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, marginBottom: 12 }}>
-                  <Num l="Logo width mm" k="logoWidthMm" /><Num l="Badge width mm" k="badgeWidthMm" />
-                  <Num l="Column width mm" k="colWidthMm" /><Num l="From top mm" k="topMm" /><Num l="From right mm" k="rightMm" />
-                </div>
-                <div className="mb-4 p-3" style={{ background: "#fff", border: `1px solid ${tpl ? C.accent : C.rule}`, borderRadius: 4 }}>
-                  <div style={{ fontFamily: UI, fontSize: 11.5, fontWeight: 700, color: C.accent, marginBottom: 4 }}>Use your own Word letterhead</div>
-                  <p style={{ fontFamily: UI, fontSize: 11.5, color: C.muted, lineHeight: 1.5, marginBottom: 8 }}>
-                    Upload any .docx or .dotx that already carries your letterhead. The Word export then keeps your header,
-                    footer, logo, styles and page setup exactly as they are and replaces only the body. It also reads the
-                    logo, strapline, names, office block and footer out of the same file and fills in the settings below,
-                    so the screen and the direct PDF follow your artwork rather than anything typed by hand.</p>
-                  <p style={{ fontFamily: UI, fontSize: 11.5, color: C.ochre, lineHeight: 1.5, marginBottom: 8 }}>
-                    For an exact PDF use the Word button, then Save as PDF from Word. A browser cannot convert a .docx,
-                    so the Print button renders from the settings below, which is close but not identical.</p>
-                  <div className="flex items-center gap-3">
-                    <label style={{ fontFamily: UI, fontSize: 11.5, color: "#fff", background: C.accent, borderRadius: 3, padding: "5px 10px", fontWeight: 600, cursor: "pointer" }}>
-                      {tpl ? "Replace template" : "Choose file"}
-                      <input type="file" accept=".docx,.dotx" style={{ display: "none" }} onChange={(e) => e.target.files[0] && loadTpl(e.target.files[0])} /></label>
-                    {tpl && <span style={{ fontFamily: MONO, fontSize: 11, color: C.ink }}>{tpl.name}</span>}
-                    {tpl && <button onClick={async () => { setTpl(null); try { await window.storage.delete("loe:letterhead"); } catch (e) {} }} style={{ fontFamily: UI, fontSize: 11, color: C.ochre }}>Remove</button>}
-                  </div>
-                </div>
-                <Lab>Type sizes, points</Lab>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, marginBottom: 16 }}>
-                  {[["bodyPt","Letter & schedules"],["termsPt","Terms of business"],["labelPt","Appendix labels"],["lhPt","Letterhead"],["footPt","Footer"]].map(([k,l]) => (
-                    <label key={k}><Lab>{l}</Lab><input type="number" step="0.5" value={(lib.type||{})[k]}
-                      onChange={(e) => setLib({ ...lib, type: { ...(lib.type||{}), [k]: +e.target.value } })} style={inp} /></label>))}
-                </div>
-
-                <Lab>Strapline, one line each</Lab>
-                <textarea rows={3} value={(D.strapline || []).join("\n")} onChange={(e) => setLH({ strapline: e.target.value.split("\n") })} style={{ ...inp, marginBottom: 14, fontFamily: "Arial" }} />
-
-                {(D.groups || []).map((g, gi) => (
-                  <div key={gi} className="mb-3 p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 26px", gap: 6, marginBottom: 6 }}>
-                      <label><Lab>Group heading</Lab><input value={g.h} onChange={(e) => setLH({ groups: D.groups.map((x, j) => j === gi ? { ...x, h: e.target.value } : x) })} style={inp} /></label>
-                      <button onClick={() => setLH({ groups: D.groups.filter((x, j) => j !== gi) })} style={{ color: C.ochre, alignSelf: "end", paddingBottom: 4 }}><Trash2 size={14} /></button>
-                    </div>
-                    {g.names.map((n, ni) => (
-                      <div key={ni} style={{ display: "grid", gridTemplateColumns: "1fr 130px 26px", gap: 6, marginBottom: 4 }}>
-                        <input value={n[0]} onChange={(e) => setLH({ groups: D.groups.map((x, j) => j === gi ? { ...x, names: x.names.map((y, m) => m === ni ? [e.target.value, y[1]] : y) } : x) })} style={inp} />
-                        <input value={n[1]} placeholder="qualifications" onChange={(e) => setLH({ groups: D.groups.map((x, j) => j === gi ? { ...x, names: x.names.map((y, m) => m === ni ? [y[0], e.target.value] : y) } : x) })} style={inp} />
-                        <button onClick={() => setLH({ groups: D.groups.map((x, j) => j === gi ? { ...x, names: x.names.filter((y, m) => m !== ni) } : x) })} style={{ color: C.ochre }}><Trash2 size={13} /></button>
-                      </div>))}
-                    <button onClick={() => setLH({ groups: D.groups.map((x, j) => j === gi ? { ...x, names: [...x.names, ["", ""]] } : x) })} className="flex items-center gap-1" style={{ fontFamily: UI, fontSize: 11, color: C.accent, fontWeight: 600 }}><Plus size={12} /> Add name</button>
-                  </div>))}
-                <button onClick={() => setLH({ groups: [...(D.groups || []), { h: "", names: [["", ""]] }] })} className="flex items-center gap-1 mb-4" style={{ fontFamily: UI, fontSize: 12, color: C.accent, fontWeight: 600 }}><Plus size={13} /> Add group</button>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                  <label><Lab>Office heading</Lab><input value={D.office.h} onChange={(e) => setLH({ office: { ...D.office, h: e.target.value } })} style={inp} /></label>
-                  <div />
-                  <label><Lab>Address, one line each</Lab><textarea rows={5} value={D.office.lines.join("\n")} onChange={(e) => setLH({ office: { ...D.office, lines: e.target.value.split("\n") } })} style={{ ...inp, fontFamily: "Arial" }} /></label>
-                  <label><Lab>Contact, one line each</Lab><textarea rows={5} value={D.office.contact.join("\n")} onChange={(e) => setLH({ office: { ...D.office, contact: e.target.value.split("\n") } })} style={{ ...inp, fontFamily: "Arial" }} /></label>
-                </div>
-
-                <Lab>Footer, one line each</Lab>
-                <textarea rows={4} value={(D.footer || []).join("\n")} onChange={(e) => setLH({ footer: e.target.value.split("\n") })} style={{ ...inp, fontFamily: "Arial" }} />
-                </>); })()}
-
-              {sel.grp === "cover" && (<>
-                <h2 style={{ fontFamily: UI, fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Covering letter</h2>
-                <p style={{ fontFamily: UI, fontSize: 12, color: C.muted, marginBottom: 14 }}>Each block appears only when its condition is true. Leave the condition blank for always. Prefix with ! to negate. Available flags: {FLAGS.join(", ")}.</p>
-                {lib.cover.map((b, i) => (
-                  <div key={b.id} className="mb-3 p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "90px 150px 130px 1fr 26px", gap: 6, alignItems: "end", marginBottom: 6 }}>
-                      <label><Lab>Id</Lab><input value={b.id} readOnly style={{ ...inp, fontFamily: MONO, background: C.shell }} /></label>
-                      <label><Lab>Kind</Lab><select value={b.k} onChange={(e) => setLib({ ...lib, cover: lib.cover.map((x, j) => j === i ? { ...x, k: e.target.value } : x) })} style={inp}>
-                        {KINDS.concat([{ v: "servicelist", l: "Service list (generated)" }, { v: "sigblocks", l: "Signature blocks (generated)" }, { v: "addrblock", l: "Address block (generated)" }]).map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></label>
-                      <label><Lab>Condition</Lab><input value={b.when} onChange={(e) => setLib({ ...lib, cover: lib.cover.map((x, j) => j === i ? { ...x, when: e.target.value } : x) })} style={{ ...inp, fontFamily: MONO }} /></label>
-                      <div />
-                      <button onClick={() => setLib({ ...lib, cover: lib.cover.filter((x, j) => j !== i) })} style={{ color: C.ochre }}><Trash2 size={14} /></button>
-                    </div>
-                    {["servicelist", "sigblocks", "addrblock", "spacer"].includes(b.k)
-                      ? <p style={{ fontFamily: UI, fontSize: 11.5, color: C.muted, fontStyle: "italic" }}>Generated by the system. No text to edit.</p>
-                      : <Editor value={b.t} onChange={(v) => setLib({ ...lib, cover: lib.cover.map((x, j) => j === i ? { ...x, t: v } : x) })} />}
-                  </div>))}
-              </>)}
-
-              {sel.grp === "terms" && lib.terms[sel.idx] && (<>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 8, alignItems: "end", marginBottom: 12 }}>
-                  <label><Lab>Clause title</Lab>
-                    <input value={lib.terms[sel.idx].title} onChange={(e) => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, title: e.target.value } : c) })} style={{ ...inp, fontSize: 14, fontWeight: 600, padding: "6px 8px" }} /></label>
-                  <div style={{ fontFamily: UI, fontSize: 11, color: C.muted, paddingBottom: 6 }}>Number {sel.idx + 1}, assigned at render</div>
-                </div>
-                {lib.terms[sel.idx].paras.map((p, i) => (
-                  <div key={i} className="mb-3 p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "180px 1fr 26px", gap: 6, alignItems: "end", marginBottom: 6 }}>
-                      <label><Lab>Kind</Lab>
-                        <select value={p.k} onChange={(e) => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, paras: c.paras.map((q, m) => m === i ? { ...q, k: e.target.value } : q) } : c) })} style={inp}>
-                          {[["p", "Numbered paragraph"], ["h2", "Numbered sub-heading"], ["p3", "Sub-paragraph"], ["bullet", "Bullet"], ["cont", "Continuation"], ["subhead", "Bold heading"], ["table", "Table row"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select></label>
-                      <div />
-                      <button onClick={() => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, paras: c.paras.filter((q, m) => m !== i) } : c) })} style={{ color: C.ochre }}><Trash2 size={14} /></button>
-                    </div>
-                    {p.k === "table"
-                      ? <input value={(p.cells || []).join(" | ")} onChange={(e) => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, paras: c.paras.map((q, m) => m === i ? { ...q, cells: e.target.value.split("|").map((x) => x.trim()) } : q) } : c) })} style={{ ...inp, fontFamily: MONO }} />
-                      : <Editor value={p.t} onChange={(v) => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, paras: c.paras.map((q, m) => m === i ? { ...q, t: v } : q) } : c) })} />}
-                  </div>))}
-                <button onClick={() => setLib({ ...lib, terms: lib.terms.map((c, j) => j === sel.idx ? { ...c, paras: [...c.paras, { k: "p", t: "" }] } : c) })} className="flex items-center gap-1" style={{ fontFamily: UI, fontSize: 12, color: C.accent, fontWeight: 600 }}><Plus size={13} /> Add paragraph</button>
-              </>)}
-
-              {sel.grp === "sch" && lib.sch[sel.key] && (<>
-                <h2 style={{ fontFamily: MONO, fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 12 }}>{sel.key}</h2>
-                {lib.sch[sel.key].map((p, i) => (
-                  <div key={i} className="mb-3 p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "180px 1fr 26px", gap: 6, alignItems: "end", marginBottom: 6 }}>
-                      <label><Lab>Kind</Lab>
-                        <select value={p.k} onChange={(e) => setLib({ ...lib, sch: { ...lib.sch, [sel.key]: lib.sch[sel.key].map((q, m) => m === i ? { ...q, k: e.target.value } : q) } })} style={inp}>
-                          {[["shead", "Section heading"], ["snum", "Numbered paragraph"], ["bullet", "Bullet"], ["cont", "Plain paragraph"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select></label>
-                      <div />
-                      <button onClick={() => setLib({ ...lib, sch: { ...lib.sch, [sel.key]: lib.sch[sel.key].filter((q, m) => m !== i) } })} style={{ color: C.ochre }}><Trash2 size={14} /></button>
-                    </div>
-                    <Editor value={p.t} onChange={(v) => setLib({ ...lib, sch: { ...lib.sch, [sel.key]: lib.sch[sel.key].map((q, m) => m === i ? { ...q, t: v } : q) } })} />
-                  </div>))}
-                <button onClick={() => setLib({ ...lib, sch: { ...lib.sch, [sel.key]: [...lib.sch[sel.key], { k: "snum", t: "" }] } })} className="flex items-center gap-1" style={{ fontFamily: UI, fontSize: 12, color: C.accent, fontWeight: 600 }}><Plus size={13} /> Add paragraph</button>
-              </>)}
-            </div>
-          </main>
-        </div>
       ) : null}
 
-      {tab === "firm" && (
-        <main style={{ maxWidth: 1600, margin: "0 auto", padding: "14px 20px 32px" }}>
-          <div style={{ maxWidth: 880 }}>
-            <h2 style={{ fontFamily: UI, fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 4 }}>People</h2>
-            <p style={{ fontFamily: UI, fontSize: 12, color: C.muted, marginBottom: 18 }}>
-              Initials drive the file reference. The title drives the pronoun used in clause 3 and in the payroll schedule,
-              so a female partner reads "her" rather than "his". Everything on the Letter tab reads from this list.
-            </p>
-
-            <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, borderBottom: `1px solid ${C.rule}`, paddingBottom: 3, marginBottom: 8 }}>Partners and directors</div>
-            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 90px 90px 30px", gap: 8, marginBottom: 4 }}>
-              <Lab>Title</Lab><Lab>Name</Lab><Lab>Initials</Lab><Lab>Pronoun</Lab><div />
-            </div>
-            {partners.map((p, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 1fr 90px 90px 30px", gap: 8, marginBottom: 6, alignItems: "center" }}>
-                <select value={p.title} onChange={(e) => setPartners(partners.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} style={inp}>{TITLES.map((t) => <option key={t} value={t}>{t || "—"}</option>)}</select>
-                <input value={p.name} onChange={(e) => setPartners(partners.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} />
-                <input value={p.initials} onChange={(e) => setPartners(partners.map((x, j) => j === i ? { ...x, initials: e.target.value.toUpperCase() } : x))} style={{ ...inp, fontFamily: MONO }} />
-                <div style={{ fontFamily: UI, fontSize: 11.5, color: C.muted }}>{(PRONOUN[p.title] || PRONOUN[""])[0]} / {(PRONOUN[p.title] || PRONOUN[""])[1]}</div>
-                <button onClick={() => setPartners(partners.filter((x, j) => j !== i))} style={{ color: C.ochre }}><Trash2 size={14} /></button>
-              </div>))}
-            <button onClick={() => setPartners([...partners, { title: "Mr", name: "", initials: "" }])} className="flex items-center gap-1 mt-1" style={{ fontFamily: UI, fontSize: 12, color: C.accent, fontWeight: 600 }}><Plus size={13} /> Add partner</button>
-
-            <div style={{ fontFamily: UI, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: C.accent, borderBottom: `1px solid ${C.rule}`, paddingBottom: 3, margin: "24px 0 8px" }}>Managers and staff</div>
-            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 90px 30px", gap: 8, marginBottom: 4 }}>
-              <Lab>Title</Lab><Lab>Name</Lab><Lab>Initials</Lab><div />
-            </div>
-            {staff.map((p, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 1fr 90px 30px", gap: 8, marginBottom: 6, alignItems: "center" }}>
-                <select value={p.title || ""} onChange={(e) => setStaff(staff.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} style={inp}>{TITLES.map((t) => <option key={t} value={t}>{t || "—"}</option>)}</select>
-                <input value={p.name} onChange={(e) => setStaff(staff.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} />
-                <input value={p.initials} onChange={(e) => setStaff(staff.map((x, j) => j === i ? { ...x, initials: e.target.value.toUpperCase() } : x))} style={{ ...inp, fontFamily: MONO }} />
-                <button onClick={() => setStaff(staff.filter((x, j) => j !== i))} style={{ color: C.ochre }}><Trash2 size={14} /></button>
-              </div>))}
-            <button onClick={() => setStaff([...staff, { title: "Mr", name: "", initials: "" }])} className="flex items-center gap-1 mt-1" style={{ fontFamily: UI, fontSize: 12, color: C.accent, fontWeight: 600 }}><Plus size={13} /> Add staff</button>
-
-            <div className="mt-8 p-3" style={{ background: "#fff", border: `1px solid ${C.rule}`, borderRadius: 4 }}>
-              <div style={{ fontFamily: UI, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 6 }}>File reference format</div>
-              <p style={{ fontFamily: UI, fontSize: 12, color: C.ink, lineHeight: 1.5 }}>
-                Partner initials, then manager initials where one is assigned, then the initials of whoever generated the letter, then the client code.
-                The manager segment and its slash are omitted when no manager is selected. Client codes are a letter and three digits,
-                with a trailing letter for an individual connected to that client, taken from the parent rather than from their own surname.
-              </p>
-              <p style={{ fontFamily: MONO, fontSize: 12.5, color: C.ink, marginTop: 8 }}>{model.ref}</p>
-            </div>
-          </div>
-        </main>
-      )}
     </div>
   );
 }

@@ -18,11 +18,16 @@ Three principles:
   3. It fails loudly. If an anchor is gone or a handler was renamed, the script
      stops and says which one, rather than emitting a half-styled build.
 """
-import io, re, sys
+import io, os, re, sys
 
 SRC = "src/upstream/engagement-letter.jsx"
 OUT = "src/engagement-letter.jsx"
 applied, warnings = [], []
+
+# Two build targets. ADMIN keeps the Templates and Firm tabs; the public
+# build has them REMOVED FROM THE SOURCE, so the editors are absent from the
+# bundle rather than hidden by a flag someone could flip in dev tools.
+ADMIN = os.environ.get("RESTYLE_ADMIN") == "1"
 
 def die(msg):
     print("\n  RESTYLE FAILED\n  " + msg + "\n")
@@ -185,12 +190,6 @@ sub(r'maxHeight: "calc\(100vh - 52px\)"', 'maxHeight: "calc(100vh - 72px)"',
 # --------------------------------------------------- 6. row ratios for dates
 # A date column needs about 183px: 130 of text, 20 padding, 2 border, 4 gap and
 # a 27px calendar button. Upstream gives it the smallest share of its row.
-subf(r'(<R c=")[^"]*(">\s*<label><Lab>Client name</Lab>)',
-     lambda m: m.group(1) + "1fr 1.3fr" + m.group(2),
-     "client row: the date takes the larger share")
-subf(u'(<R c=")[^"]*(">\\s*<label><Lab>Cap \u00a3</Lab>)',
-     lambda m: m.group(1) + "1fr 1fr 2.2fr" + m.group(2),
-     "firm row: letter date stays in place, widened")
 
 # --------------------------------------------- 7. upstream bug: the Firm tab
 # Written as `letter ? A : B` with no third arm, so Firm falls into the
@@ -213,9 +212,55 @@ sub(r'    r\.readAsArrayBuffer\(file\); \};',
 # says, so the panel opens straight on Client type.
 sub(r'\n *<H>Engagement</H>', '', "remove the redundant Engagement caption")
 
+# ------------------------------- 10. public build: excise the two admin tabs
+# Deleted from the SOURCE before esbuild sees it, so the clause editor and the
+# people editor are not in the shipped bundle at all. There is no flag to flip
+# and nothing to find in dev tools. SEED_LIBRARY and the people list still ship,
+# because the letter cannot be generated without them.
+if not ADMIN:
+    # the two tab buttons
+    sub(r'\{\[\["letter", "Letter", FileText\], \["templates", "Templates", Layers\], \["firm", "Firm", Users\]\]',
+        '{[["letter", "Letter", FileText]]',
+        "public build: only the Letter tab is offered")
+    # their action-row groups
+    sub(r'\n *\{tab === "templates" && \(<>[\s\S]*?</>\)\}', '',
+        "public build: library import/export removed")
+    sub(r'\n *\{tab === "firm" && \(<>[\s\S]*?</>\)\}', '',
+        "public build: people import/export removed")
+    # the whole Templates pane
+    sub(r'\n      \) : tab === "templates" \? \([\s\S]*?\n      \) : null\}', '\n      ) : null}',
+        "public build: clause library pane removed")
+    # the whole Firm pane
+    sub(r'\n      \{tab === "firm" && \([\s\S]*?\n      \)\}', '',
+        "public build: firm people pane removed")
+
+# ------------------------------- 11. the letter date defaults to today
+# Upstream ships a fixed date, which is wrong the day after it was written.
+sub(r'today: "1st August 2026"', 'today: fmtDate(new Date())',
+    "letter date defaults to today")
+
+# ------------------------------- 12. two rows fewer in the form panel
+# Letter date joins Client type at the top; Cap and Terms join Complaints
+# escalation. Removes one row (~57px) without compressing any control.
+sub(r'<R c="1fr"><label><Lab>Client type</Lab>\n( *)<select value=\{type\} onChange=\{\(e\) => setType\(e\.target\.value\)\} style=\{inp\}>\{TYPES\.map\(\(t\) => <option key=\{t\.v\} value=\{t\.v\}>\{t\.l\}</option>\)\}</select></label>',
+    '<R c="1fr 1fr"><label><Lab>Client type</Lab>\n'
+    '              <select value={type} onChange={(e) => setType(e.target.value)} style={inp}>'
+    '{TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}</select></label>\n'
+    '              <label><Lab>Letter date</Lab><DateField value={f.today} '
+    'onChange={(v) => set("today", v)} style={inp} align="right" /></label>',
+    "letter date moves up beside client type")
+
+subf(r'(<R c=")1fr("><label><Lab>Complaints escalation</Lab>.*?</R>)\n *<R c="1fr 1fr 1\.2fr">\n *<label><Lab>Cap £</Lab><T k="cap" f=\{f\} set=\{set\} /></label>\n *<label><Lab>Terms dated</Lab><T k="tobVersion" f=\{f\} set=\{set\} /></label>\n *<label><Lab>Letter date</Lab><DateField[^\n]*</label>\n *</R>',
+     lambda m: m.group(1) + "1.6fr 1fr 1fr" + m.group(2)[:-len("</R>")]
+       + '\n              <label><Lab>Cap £</Lab><T k="cap" f={f} set={set} /></label>'
+       + '\n              <label><Lab>Terms dated</Lab><T k="tobVersion" f={f} set={set} /></label>'
+       + '\n            </R>',
+     "cap and terms join complaints escalation")
+
 io.open(OUT, "w", encoding="utf-8").write(s)
 print("")
 print("  RESTYLED  %s" % OUT)
+print("  TARGET    %s" % ("ADMIN - all three tabs" if ADMIN else "PUBLIC - Letter only, editors not compiled in"))
 print("  %d rules applied:" % len(applied))
 for a in applied: print("    - " + a)
 for w in warnings: print("\n  note: " + w)
